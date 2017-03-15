@@ -1,12 +1,4 @@
-/*
-Highlight and execute the following statement to drop the function
-before executing the create statement.
-
-DROP FUNCTION db_cra:sp_agent_log_activity;
-
-*/
-
-CREATE FUNCTION sp_agent_log_activity (@p_startTime DATETIME,
+CREATE FUNCTION [dbo].[sp_agent_log_activity] (@p_startTime DATETIME,
                                        @p_endTime DATETIME,
                                        @p_sortBy int = 0,
                                        @p_resGroupList VARCHAR(4000) = 'NULL',
@@ -82,32 +74,22 @@ BEGIN
         profileid INT,
         resourcegroupid int,
         dateinactive datetime,
-        --filter boolean default 'f',
+        filter bit default 0,
         rsmid INT,
         teamid INT
     );
-
-	--CREATE TABLE #selected_agents (
- --       agentloginid NVARCHAR(50), 
- --       agentname NVARCHAR(50),
- --       agentID INT,
- --       profileid INT,
- --       resourcegroupid int,
- --       dateinactive datetime,	
- --       --filter boolean default 'f',
- --       rsmid INT,
- --       teamid INT
- --   )
 
     -- list of skills, agent names, or resource group names
     DECLARE @selected_names TABLE (name NVARCHAR(50));
 	
 	DECLARE @agentids TABLE (
 		agentid int,
-		filter bit default 'f'
+		filter bit default 0
 	);
 
-   --CREATE SEQUENCE temp_asdr_seq INCREMENT BY 1 START WITH 1;
+  -- CREATE SEQUENCE @temp_asdr_seq AS INT
+		--START WITH 1
+		--INCREMENT BY 1;
 
     --chnaging seq from serial to int	
 	DECLARE @temp_asdr TABLE (
@@ -116,7 +98,7 @@ BEGIN
 		eventtype smallint,
 		reasoncode smallint,
 		eventdatetime datetime,
-		filter bit default 'f'
+		filter bit default 0
 	);
 	
 	DECLARE @temp_asdr1 TABLE (
@@ -124,24 +106,26 @@ BEGIN
 		eventtype smallint,
 		reasoncode smallint,
 		eventdatetime datetime,
-		filter bit default 'f'
+		filter bit default 0
 	);
 	
 	DECLARE @temp_login_logout TABLE (
 		seq int,
 		logintime datetime,
 		logouttime datetime,
-		loginfilter bit default 'f',
-		logoutfilter bit default 'f',
+		loginfilter bit default 0,
+		logoutfilter bit default 0,
 		reasoncode smallint,
 		op1 nvarchar(1),
 		op2 nvarchar(1),
 		duration int
 	);	
 	
-   SET @l_IsDataScaledToSynch = 'f';
+   SET @l_IsDataScaledToSynch = 0;
    SET @l_eStartDate = @p_endTime;
-   EXECUTE @p_endTime @l_eStartDate OUTPUT, @l_IsDataScaledToSynch OUTPUT;	
+   EXECUTE dbo.sp_executesql	N'@l_eStartDate OUTPUT, @l_IsDataScaledToSynch OUTPUT',
+								@l_eStartDate OUTPUT,
+								@l_IsDataScaledToSynch OUTPUT;	
 
    IF @p_endTime > getutcdate() BEGIN
       SET @p_endTime = getutcdate();
@@ -179,10 +163,10 @@ BEGIN
     ---END;
 	
    -- get list of agents to be reported
-   EXEC dbo.sp_executesql @_p_startTime = @p_startTime, @_p_endTime = @p_endTime, @_l_selType = @l_selType, @_l_selValue = @l_selValue;
+   EXECUTE dbo.sp_executesql @_p_startTime = @p_startTime, @_p_endTime = @p_endTime, @_l_selType = @l_selType, @_l_selValue = @l_selValue;
    
    DECLARE cur CURSOR FOR
-   (SELECT [@agentname], [@agentloginid] 
+   (SELECT [agentname], [agentloginid] 
 		   from [@selected_agents])
    OPEN cur;
    FETCH cur INTO @l_AgentName, @l_AgentLoginID;
@@ -198,7 +182,7 @@ BEGIN
    DEALLOCATE cur;
     
    -- CSCtz75943 
-   EXEC dbo.sp_executesql @p_startTime, @p_endTime;   
+   EXECUTE dbo.sp_executesql @p_startTime, @p_endTime;   
 						   
    SET @l_resCount = 0;
 
@@ -286,7 +270,7 @@ BEGIN
                 
         END 
 
-		return
+		RETURN
 
    --BEGIN 
    --     ON EXCEPTION IN (-206,-8300) END EXCEPTION WITH RESUME;
@@ -304,3 +288,9 @@ BEGIN
 END;                                                                                                                                                                   
 
 
+
+
+
+
+
+GO
